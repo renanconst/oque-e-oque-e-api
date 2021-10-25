@@ -1,5 +1,6 @@
 import axios from "axios";
 import cheerio from "cheerio";
+import prismaClient from "../src/prisma";
 
 const URL = "https://www.osvigaristas.com.br/charadas/pagina";
 
@@ -9,7 +10,7 @@ interface IRiddles {
 }
 
 class riddleCrawler {
-  async scraping() {
+  private async scraping() {
     const riddlesArray: IRiddles[] = [];
 
     for (let i = 1; i < 4; i++) {
@@ -19,8 +20,8 @@ class riddleCrawler {
 
       const riddles = $(".item-index");
 
-      riddles.each((i, element) => {
-        riddlesArray.push({
+      riddles.map((i, element) => {
+        return riddlesArray.push({
           question: $(element).find(".question").text(),
           answer: $(element).find(".toggleable").text(),
         });
@@ -29,6 +30,23 @@ class riddleCrawler {
 
     return riddlesArray;
   }
+
+  async addToDatabase() {
+    const riddles = await this.scraping();
+
+    riddles.map(async (riddle) => {
+      try {
+        return await prismaClient.riddle.create({
+          data: {
+            answer: riddle.answer,
+            question: riddle.question,
+          },
+        });
+      } catch (error) {
+        console.log({ error: error });
+      }
+    });
+  }
 }
 
-new riddleCrawler().scraping();
+new riddleCrawler().addToDatabase();
